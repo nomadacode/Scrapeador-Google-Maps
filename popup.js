@@ -190,7 +190,7 @@ function downloadCsv(csv, filename) {
     var csvFile;
     var downloadLink;
 
-    csvFile = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+    csvFile = new Blob([csv], {type: 'text/csv; charset=utf-8;'});
     downloadLink = document.createElement('a');
     downloadLink.download = filename;
     downloadLink.href = window.URL.createObjectURL(csvFile);
