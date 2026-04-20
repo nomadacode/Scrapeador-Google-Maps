@@ -116,21 +116,88 @@ function scrapeData() {
     }
 
     function extractContainer(link) {
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
+        if (!link) return null;
+        return (
+            link.closest('[jsaction*="mouseover:pane"]') ||
+            link.closest('div.Nv2PK') ||
+            link.closest('[role="article"]') ||
+            link.parentElement
+        );
+    }
+
+    function extractTitle(container) {
+        if (!container) return '';
+
+        var selectorCandidates = [
+            '.fontHeadlineSmall',
+            '.qBF1Pd',
+            '[role="heading"]',
+            'h3',
+            'h2'
+        ];
+
+        for (var i = 0; i < selectorCandidates.length; i++) {
+            var title = safeText(container.querySelector(selectorCandidates[i]));
+            if (title) return title;
+        }
+
+        var fallbackText = safeText(container);
+        return fallbackText.split(/\n|\r|·/)[0].trim();
+=======
         return link ? link.closest('[jsaction*="mouseover:pane"]') : null;
     }
 
     function extractTitle(container) {
         return safeText(container && container.querySelector('.fontHeadlineSmall'));
+>>>>>>> main
     }
 
     function extractInfoText(container) {
         if (!container) return '';
 
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
+        var selectorCandidates = ['.W4Efsd', '.W4Efsd span', '.UaQhfb', '.W4Efsd:last-child', '.W4Efsd > span'];
+=======
         var selectorCandidates = ['.W4Efsd', '.W4Efsd span', '.UaQhfb', '.W4Efsd:last-child'];
+>>>>>>> main
         for (var i = 0; i < selectorCandidates.length; i++) {
             var nodes = Array.from(container.querySelectorAll(selectorCandidates[i]));
             var combined = nodes.map(safeText).filter(Boolean).join(' · ').trim();
             if (combined) return combined;
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
+        }
+
+        return safeText(container);
+    }
+
+    function extractRatingAndReviews(container) {
+        if (!container) return { rating: '', reviewCount: '' };
+
+        var roleImgContainer = container.querySelector('[role="img"][aria-label*="star"], [role="img"][aria-label*="Star"], [role="img"][aria-label*="estrella"], [role="img"]');
+        var ariaLabel = roleImgContainer ? (roleImgContainer.getAttribute('aria-label') || '') : '';
+        var text = (ariaLabel || '') + ' ' + safeText(container);
+        var rating = '';
+        var reviewCount = '';
+
+        var ratingMatch = text.match(/([0-5][.,]\d)/);
+        if (ratingMatch) {
+            rating = ratingMatch[1];
+        }
+
+        var reviewPatterns = [
+            /\(([\d.,]+)\)/,
+            /([\d.,]+)\s*(reviews?|reseñas?)/i,
+            /([\d.,]+)\s*(ratings?|calificaciones?)/i
+        ];
+
+        for (var i = 0; i < reviewPatterns.length; i++) {
+            var reviewMatch = text.match(reviewPatterns[i]);
+            if (reviewMatch && reviewMatch[1]) {
+                reviewCount = formatReviewCount(reviewMatch[1]);
+                break;
+            }
+=======
         }
 
         return safeText(container);
@@ -156,10 +223,29 @@ function scrapeData() {
             var source = phoneSources[i] || '';
             var phoneMatch = source.match(phoneRegex);
             if (phoneMatch) return phoneMatch[0];
+>>>>>>> main
         }
         return '';
     }
 
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
+        return { rating: rating, reviewCount: reviewCount };
+    }
+
+    function extractPhone(container, infoText) {
+        var phoneSources = [
+            safeText(container && container.querySelector('button[data-item-id^="phone:"]')),
+            safeText(container && container.querySelector('[data-item-id*="phone"]')),
+            infoText,
+            safeText(container)
+        ];
+        var phoneRegex = /(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
+
+        for (var i = 0; i < phoneSources.length; i++) {
+            var source = phoneSources[i] || '';
+            var phoneMatch = source.match(phoneRegex);
+            if (phoneMatch) return phoneMatch[0];
+=======
     function extractAddress(container, infoText) {
         var selectorAddress = safeText(container && container.querySelector('button[data-item-id^="address:"]'));
         if (selectorAddress) return selectorAddress;
@@ -193,14 +279,78 @@ function scrapeData() {
         var marker = [rating, formatReviewCount(reviewCount)].filter(Boolean).join(' ');
         if (marker && text.includes(marker)) {
             text = text.substring(text.indexOf(marker) + marker.length).trim();
+>>>>>>> main
         }
+        return '';
+    }
 
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
+    function extractAddress(container, infoText) {
+        var selectorAddress = safeText(container && container.querySelector('button[data-item-id^="address:"]'));
+        if (!selectorAddress) {
+            selectorAddress = safeText(container && container.querySelector('[data-item-id*="address"]'));
+=======
         if (address) {
             text = text.replace(address, '').trim();
+>>>>>>> main
+        }
+        if (selectorAddress) return selectorAddress;
+
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
+        var text = (infoText || '') + ' ' + safeText(container);
+        var addressRegex = /\d+\s+[\w\s.,#-]+(?:#\s*\d+|Suite\s*\d+|Apt\s*\d+)?/;
+        var match = text.match(addressRegex);
+        if (!match) return '';
+
+        return match[0]
+            .replace(/\b(Closed|Open 24 hours|24 hours)|Open\b/g, '')
+            .replace(/(\d+)(Open)/g, '$1')
+            .replace(/(\w)(Open|Closed)/g, '$1')
+            .trim();
+    }
+
+    function extractWebsite(container, mapsUrl) {
+        var links = Array.from((container && container.querySelectorAll('a[href]')) || []);
+        var filtered = links.filter(function(anchor) {
+            if (!anchor.href || anchor.href === mapsUrl) return false;
+            if (anchor.href.startsWith('https://www.google.com/maps')) return false;
+            return anchor.href.startsWith('http://') || anchor.href.startsWith('https://');
+        });
+        return filtered[0] ? filtered[0].href : '';
+    }
+
+    function extractCategory(container, rating, reviewCount, address, infoText) {
+        var selectorCategory = safeText(container && container.querySelector('button[jsaction*="pane.rating.category"]'));
+        if (selectorCategory) return selectorCategory;
+
+        var text = (infoText || '') + ' ' + safeText(container);
+        if (!text) return '';
+        var normalizedReviews = formatReviewCount(reviewCount);
+        var textBeforeAddress = address && text.includes(address) ? text.substring(0, text.indexOf(address)).trim() : text;
+        var marker = (rating + normalizedReviews).trim();
+        var markerIndex = marker ? textBeforeAddress.lastIndexOf(marker) : -1;
+        if (markerIndex !== -1) {
+            var raw = textBeforeAddress
+                .substring(markerIndex + marker.length)
+                .trim()
+                .split(/[\r\n]+/)[0] || '';
+            var cleanedRaw = raw.replace(/[·.,#!?]/g, '').trim();
+            if (cleanedRaw) return cleanedRaw;
         }
 
+        var segments = textBeforeAddress.split('·').map(function(part) { return part.trim(); }).filter(Boolean);
+        for (var i = 0; i < segments.length; i++) {
+            var segment = segments[i];
+            if (segment === rating || formatReviewCount(segment) === normalizedReviews) continue;
+            if (address && segment.includes(address)) continue;
+            if (segment.match(/(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/)) continue;
+            if (segment) return segment.replace(/[.,#!?]/g, '').trim();
+        }
+        return '';
+=======
         var firstSegment = text.split('·')[0] || '';
         return firstSegment.replace(/[.,#!?]/g, '').trim();
+>>>>>>> main
     }
 
     function extractMapsUrl(link) {
