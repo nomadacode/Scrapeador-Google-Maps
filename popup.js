@@ -116,6 +116,7 @@ function scrapeData() {
     }
 
     function extractContainer(link) {
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
         if (!link) return null;
         return (
             link.closest('[jsaction*="mouseover:pane"]') ||
@@ -143,16 +144,28 @@ function scrapeData() {
 
         var fallbackText = safeText(container);
         return fallbackText.split(/\n|\r|·/)[0].trim();
+=======
+        return link ? link.closest('[jsaction*="mouseover:pane"]') : null;
+    }
+
+    function extractTitle(container) {
+        return safeText(container && container.querySelector('.fontHeadlineSmall'));
+>>>>>>> main
     }
 
     function extractInfoText(container) {
         if (!container) return '';
 
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
         var selectorCandidates = ['.W4Efsd', '.W4Efsd span', '.UaQhfb', '.W4Efsd:last-child', '.W4Efsd > span'];
+=======
+        var selectorCandidates = ['.W4Efsd', '.W4Efsd span', '.UaQhfb', '.W4Efsd:last-child'];
+>>>>>>> main
         for (var i = 0; i < selectorCandidates.length; i++) {
             var nodes = Array.from(container.querySelectorAll(selectorCandidates[i]));
             var combined = nodes.map(safeText).filter(Boolean).join(' · ').trim();
             if (combined) return combined;
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
         }
 
         return safeText(container);
@@ -184,8 +197,38 @@ function scrapeData() {
                 reviewCount = formatReviewCount(reviewMatch[1]);
                 break;
             }
+=======
         }
 
+        return safeText(container);
+    }
+
+    function extractRatingAndReviews(container) {
+        var roleImgContainer = container && container.querySelector('[role="img"]');
+        var ariaLabel = roleImgContainer ? (roleImgContainer.getAttribute('aria-label') || '') : '';
+        if (!ariaLabel) return { rating: '', reviewCount: '' };
+
+        var numbers = ariaLabel.match(/\d+[\d.,]*/g) || [];
+        return {
+            rating: numbers[0] || '',
+            reviewCount: formatReviewCount(numbers[1] || '')
+        };
+    }
+
+    function extractPhone(container, infoText) {
+        var phoneSources = [infoText, safeText(container && container.querySelector('button[data-item-id^="phone:"]'))];
+        var phoneRegex = /(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
+
+        for (var i = 0; i < phoneSources.length; i++) {
+            var source = phoneSources[i] || '';
+            var phoneMatch = source.match(phoneRegex);
+            if (phoneMatch) return phoneMatch[0];
+>>>>>>> main
+        }
+        return '';
+    }
+
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
         return { rating: rating, reviewCount: reviewCount };
     }
 
@@ -202,17 +245,58 @@ function scrapeData() {
             var source = phoneSources[i] || '';
             var phoneMatch = source.match(phoneRegex);
             if (phoneMatch) return phoneMatch[0];
+=======
+    function extractAddress(container, infoText) {
+        var selectorAddress = safeText(container && container.querySelector('button[data-item-id^="address:"]'));
+        if (selectorAddress) return selectorAddress;
+
+        var addressRegex = /\d+\s+[\w\s.,#-]+(?:Suite\s*\d+|Apt\s*\d+|#\s*\d+)?/;
+        var match = (infoText || '').match(addressRegex);
+        if (!match) return '';
+
+        return match[0]
+            .replace(/\b(Closed|Open 24 hours|24 hours)|Open\b/g, '')
+            .replace(/(\d+)(Open)/g, '$1')
+            .replace(/(\w)(Open|Closed)/g, '$1')
+            .trim();
+    }
+
+    function extractWebsite(container, mapsUrl) {
+        var links = Array.from((container && container.querySelectorAll('a[href]')) || []);
+        var filtered = links.filter(function(anchor) {
+            return anchor.href && anchor.href !== mapsUrl && !anchor.href.startsWith('https://www.google.com/maps/place/');
+        });
+        return filtered[0] ? filtered[0].href : '';
+    }
+
+    function extractCategory(container, rating, reviewCount, address, infoText) {
+        var selectorCategory = safeText(container && container.querySelector('button[jsaction*="pane.rating.category"]'));
+        if (selectorCategory) return selectorCategory;
+
+        var text = infoText || '';
+        if (!text) return '';
+
+        var marker = [rating, formatReviewCount(reviewCount)].filter(Boolean).join(' ');
+        if (marker && text.includes(marker)) {
+            text = text.substring(text.indexOf(marker) + marker.length).trim();
+>>>>>>> main
         }
         return '';
     }
 
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
     function extractAddress(container, infoText) {
         var selectorAddress = safeText(container && container.querySelector('button[data-item-id^="address:"]'));
         if (!selectorAddress) {
             selectorAddress = safeText(container && container.querySelector('[data-item-id*="address"]'));
+=======
+        if (address) {
+            text = text.replace(address, '').trim();
+>>>>>>> main
         }
         if (selectorAddress) return selectorAddress;
 
+<<<<<<< codex/implement-sprint-1-stability-improvements-6k2ulc
         var text = (infoText || '') + ' ' + safeText(container);
         var addressRegex = /\d+\s+[\w\s.,#-]+(?:#\s*\d+|Suite\s*\d+|Apt\s*\d+)?/;
         var match = text.match(addressRegex);
@@ -263,6 +347,10 @@ function scrapeData() {
             if (segment) return segment.replace(/[.,#!?]/g, '').trim();
         }
         return '';
+=======
+        var firstSegment = text.split('·')[0] || '';
+        return firstSegment.replace(/[.,#!?]/g, '').trim();
+>>>>>>> main
     }
 
     function extractMapsUrl(link) {
