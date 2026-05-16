@@ -3,7 +3,7 @@
     "name": "Scraping Google",
     "version": "1.0",
     "description": "Google Maps",
-    "permissions": ["activeTab", "scripting"],
+    "permissions": ["activeTab", "scripting", "clipboardWrite", "tabs"],
     "action": {
       "default_popup": "popup.html"
     },
