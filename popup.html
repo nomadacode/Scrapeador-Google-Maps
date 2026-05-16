@@ -28,7 +28,17 @@
       font-family: 'Poppins', sans-serif;
     }
     .button:hover {
-      background-color: #0056b3; 
+      background-color: #0056b3;
+    }
+    .button:disabled {
+      background-color: #a0c4f1;
+      cursor: not-allowed;
+    }
+    #statusMessage {
+      font-size: 13px;
+      color: #555;
+      margin-top: 8px;
+      min-height: 18px;
     }
     .input {
       padding: 8px 15px;
@@ -77,6 +87,7 @@
   <button id="actionButton" class="button" disabled>Scrapear</button>
   <button id="downloadCsvButton" class="button" style="margin-left: 10px;" disabled>Descargar como CSV</button>
   <input type="text" id="filenameInput" class="input" placeholder="Enter file name" style="margin-left: 10px;" />
+  <div id="statusMessage"></div>
   <table id="resultsTable">
     <thead>
       <tr>
