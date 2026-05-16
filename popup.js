@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
         analyzeButton.addEventListener('click', function() {
             var industry = detectIndustry(lastResults);
             var prompt = buildAnalysisPrompt(lastResults, industry);
-            navigator.clipboard.writeText(prompt).then(function() {
+            copyToClipboard(prompt).then(function() {
                 statusMessage.textContent = '✓ Prompt copiado — pegá con Ctrl+V en Claude';
                 chrome.tabs.create({ url: 'https://claude.ai/new' });
             }).catch(function() {
@@ -386,6 +386,28 @@ async function scrapeData() {
 
     var links = Array.from(document.querySelectorAll('a[href^="https://www.google.com/maps/place"]'));
     return links.map(buildResult);
+}
+
+function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function(resolve, reject) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            resolve();
+        } catch (e) {
+            document.body.removeChild(ta);
+            reject(e);
+        }
+    });
 }
 
 function normalizeForIndustry(str) {
