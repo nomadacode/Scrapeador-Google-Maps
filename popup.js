@@ -213,7 +213,7 @@ async function scrapeData() {
             infoText,
             safeText(container)
         ];
-        var phoneRegex = /(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
+        var phoneRegex = /(\+?\d{1,2}[\s.-])?\(?\d{2,3}\)?[\s.-]?\d{2,4}[\s.-]?\d{4}/;
 
         for (var i = 0; i < phoneSources.length; i++) {
             var source = phoneSources[i] || '';
@@ -231,15 +231,19 @@ async function scrapeData() {
         if (selectorAddress) return selectorAddress;
 
         var text = (infoText || '') + ' ' + safeText(container);
-        var addressRegex = /\d+\s+[\w\s.,#-]+(?:#\s*\d+|Suite\s*\d+|Apt\s*\d+)?/;
+        var phoneRegex = /(\+?\d{1,2}[\s.-])?\(?\d{2,3}\)?[\s.-]?\d{2,4}[\s.-]?\d{4}/;
+        var addressRegex = /\d+\s+[a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ0-9\s.,#-]+(?:#\s*\d+|Suite\s*\d+|Apt\s*\d+)?/;
         var match = text.match(addressRegex);
         if (!match) return '';
 
-        return match[0]
-            .replace(/\b(Closed|Open 24 hours|24 hours)|Open\b/g, '')
-            .replace(/(\d+)(Open)/g, '$1')
-            .replace(/(\w)(Open|Closed)/g, '$1')
+        var candidate = match[0]
+            .replace(/\b(Closed|Cerrado|Open 24 hours|Abierto 24 horas|24 horas?|24 hours?)\b/gi, '')
+            .replace(/\b(Open|Abierto)\b/g, '')
+            .replace(/(\d+)(Open|Abierto|Closed|Cerrado)/g, '$1')
             .trim();
+
+        if (phoneRegex.test(candidate) && !/[a-zA-ZÀ-ÿ]{3,}/.test(candidate)) return '';
+        return candidate;
     }
 
     function extractWebsite(container, mapsUrl) {
@@ -272,11 +276,16 @@ async function scrapeData() {
         }
 
         var segments = textBeforeAddress.split('·').map(function(part) { return part.trim(); }).filter(Boolean);
+        var phoneSegRegex = /(\+?\d{1,2}[\s.-])?\(?\d{2,3}\)?[\s.-]?\d{2,4}[\s.-]?\d{4}/;
         for (var i = 0; i < segments.length; i++) {
             var segment = segments[i];
-            if (segment === rating || formatReviewCount(segment) === normalizedReviews) continue;
+            if (segment === rating) continue;
+            if (rating && segment.trim().startsWith(rating)) continue;
+            if (normalizedReviews && formatReviewCount(segment) === normalizedReviews) continue;
+            if (normalizedReviews && segment.includes(normalizedReviews)) continue;
+            if (/^(No hay opiniones|Sin rese[ñn]as|No reviews|Be the first)/i.test(segment)) continue;
             if (address && segment.includes(address)) continue;
-            if (segment.match(/(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/)) continue;
+            if (phoneSegRegex.test(segment)) continue;
             if (segment) return segment.replace(/[.,#!?]/g, '').trim();
         }
         return '';
