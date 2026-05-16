@@ -3,9 +3,11 @@ document.addEventListener('DOMContentLoaded', function() {
         var currentTab = tabs[0];
         var actionButton = document.getElementById('actionButton');
         var downloadCsvButton = document.getElementById('downloadCsvButton');
+        var analyzeButton = document.getElementById('analyzeButton');
         var resultsTable = document.getElementById('resultsTable');
         var filenameInput = document.getElementById('filenameInput');
         var statusMessage = document.getElementById('statusMessage');
+        var lastResults = [];
 
         if (currentTab && currentTab.url.includes('://www.google.com/maps/search')) {
             document.getElementById('message').textContent = 'Scrapeemos 😎!';
@@ -22,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             actionButton.style.display = 'none';
             downloadCsvButton.style.display = 'none';
+            analyzeButton.style.display = 'none';
             filenameInput.style.display = 'none';
         }
 
@@ -68,8 +71,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     resultsTable.appendChild(row);
                 });
 
+                lastResults = finalResults;
                 statusMessage.textContent = finalResults.length + ' resultados encontrados';
                 downloadCsvButton.disabled = finalResults.length === 0;
+                analyzeButton.disabled = finalResults.length === 0;
+            });
+        });
+
+        analyzeButton.addEventListener('click', function() {
+            var industry = detectIndustry(lastResults);
+            var prompt = buildAnalysisPrompt(lastResults, industry);
+            navigator.clipboard.writeText(prompt).then(function() {
+                statusMessage.textContent = '✓ Prompt copiado — pegá con Ctrl+V en Claude';
+                chrome.tabs.create({ url: 'https://claude.ai/new' });
+            }).catch(function() {
+                statusMessage.textContent = 'Error al copiar al portapapeles.';
             });
         });
 
@@ -370,6 +386,125 @@ async function scrapeData() {
 
     var links = Array.from(document.querySelectorAll('a[href^="https://www.google.com/maps/place"]'));
     return links.map(buildResult);
+}
+
+function normalizeForIndustry(str) {
+    return (str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .trim();
+}
+
+function detectIndustry(results) {
+    var KEYWORDS = {
+        restaurante: ['restaurant', 'restorant', 'restoran', 'restorante', 'comida', 'food', 'cafe', 'cafeteria', 'cafetería', 'pizza', 'pizzeria', 'taqueria', 'taco', 'burger', 'hamburgues', 'mariscos', 'sushi', 'cantina', 'fonda', 'loncheria', 'cocina', 'bistro', 'brunch', 'panaderia', 'pasteleria', 'heladeria'],
+        dental:      ['dentist', 'odontolog', 'dental', 'dent', 'ortodoncia', 'endodoncia', 'implant', 'protesis'],
+        hotel:       ['hotel', 'hostal', 'hospedaje', 'posada', 'motel', 'alojamiento', 'suites', 'inn', 'resort'],
+        medico:      ['medic', 'clinic', 'hospital', 'salud', 'doctor', 'dr.', 'consultor', 'farmacia', 'laboratorio', 'veterinari', 'psicolog'],
+        belleza:     ['salon', 'estetica', 'spa', 'peluquer', 'barber', 'unas', 'nail', 'belleza', 'cosmet', 'masaje', 'depilacion'],
+        gimnasio:    ['gimnasio', 'gym', 'fitness', 'yoga', 'pilates', 'crossfit', 'deporte', 'entrenamiento'],
+        educacion:   ['escuela', 'colegio', 'universidad', 'instituto', 'academia', 'capacitacion', 'cursos', 'escuela'],
+        retail:      ['tienda', 'boutique', 'shop', 'store', 'comercio', 'mercado', 'supermercado', 'bazar']
+    };
+
+    var counts = {};
+    Object.keys(KEYWORDS).forEach(function(cat) { counts[cat] = 0; });
+
+    results.forEach(function(item) {
+        var haystack = normalizeForIndustry((item.industry || '') + ' ' + (item.title || ''));
+        Object.keys(KEYWORDS).forEach(function(cat) {
+            KEYWORDS[cat].forEach(function(kw) {
+                if (haystack.includes(kw)) counts[cat]++;
+            });
+        });
+    });
+
+    var best = Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; })[0];
+    return counts[best] > 0 ? best : 'negocio';
+}
+
+function buildAnalysisPrompt(results, industry) {
+    var QUESTIONS = {
+        restaurante: [
+            '¿Cuáles son los restaurantes mejor valorados y qué los distingue del resto?',
+            '¿Qué tipos de cocina o concepto predominan en la zona?',
+            '¿Existe correlación entre cantidad de reseñas y rating? ¿Qué indica eso?',
+            '¿Dónde ves oportunidades de mercado o nichos sin cubrir?',
+            'Si tuvieras que recomendar los 3 mejores, ¿cuáles serían y por qué?'
+        ],
+        dental: [
+            '¿Cuáles son las clínicas mejor valoradas y qué las diferencia?',
+            '¿Qué especialidades dentales predominan en la zona?',
+            '¿Qué nivel de competencia hay según ratings y volumen de reseñas?',
+            '¿Hay oportunidades para una nueva clínica en términos de especialidad o zona?',
+            '¿Cuáles tienen presencia web y cuáles no? ¿Qué implica eso?'
+        ],
+        hotel: [
+            '¿Cuáles son los hoteles mejor valorados y qué ofrecen?',
+            '¿Hay diferencias notables en calidad según ubicación?',
+            '¿Qué servicios o características parecen más valorados por los huéspedes?',
+            '¿Dónde ves oportunidades de mercado en hospedaje en esta zona?'
+        ],
+        medico: [
+            '¿Qué especialidades médicas predominan en la zona?',
+            '¿Cuáles son los centros mejor valorados y por qué destacan?',
+            '¿Hay zonas con alta densidad de oferta médica vs. zonas desatendidas?',
+            '¿Qué oportunidades ves para nuevos servicios de salud?'
+        ],
+        belleza: [
+            '¿Cuáles son los salones/spas mejor valorados y qué los destaca?',
+            '¿Qué servicios de belleza predominan?',
+            '¿Hay nichos sin cubrir (ej: barbería, uñas, spa, depilación)?',
+            '¿Qué tienen en común los negocios con más reseñas?'
+        ],
+        gimnasio: [
+            '¿Cuáles son los gimnasios/estudios mejor valorados?',
+            '¿Qué tipos de actividad física predominan?',
+            '¿Hay nichos sin cubrir (yoga, crossfit, pilates, etc.)?',
+            '¿Qué caracteriza a los negocios con mejor rating?'
+        ],
+        educacion: [
+            '¿Cuáles son las instituciones mejor valoradas?',
+            '¿Qué tipos de educación o capacitación predominan?',
+            '¿Hay nichos educativos sin cubrir en la zona?',
+            '¿Qué diferencia a las instituciones con más reseñas positivas?'
+        ],
+        negocio: [
+            '¿Cuáles son los negocios mejor valorados y qué los distingue?',
+            '¿Qué patrones observas en los ratings y cantidad de reseñas?',
+            '¿Hay algún nicho o gap de mercado visible?',
+            '¿Qué recomendarías si quisiera abrir un negocio similar en esta zona?',
+            'Dame un resumen ejecutivo del panorama competitivo.'
+        ]
+    };
+
+    var questions = QUESTIONS[industry] || QUESTIONS['negocio'];
+    var label = { restaurante: 'restaurantes', dental: 'clínicas dentales', hotel: 'hoteles', medico: 'centros médicos', belleza: 'negocios de belleza', gimnasio: 'gimnasios/estudios', educacion: 'instituciones educativas', negocio: 'negocios' };
+
+    var headers = ['Nombre', 'Rating', 'Reseñas', 'Teléfono', 'Categoría', 'Dirección', 'Sitio Web'];
+    var keys    = ['title',  'rating', 'reviewCount', 'phone', 'industry', 'address',   'companyUrl'];
+
+    var sep = '| ' + headers.map(function() { return '---'; }).join(' | ') + ' |';
+    var rows = [
+        '| ' + headers.join(' | ') + ' |',
+        sep
+    ].concat(results.map(function(item) {
+        return '| ' + keys.map(function(k) {
+            return (item[k] || '').replace(/\|/g, '/').replace(/\n|\r/g, ' ');
+        }).join(' | ') + ' |';
+    }));
+
+    return [
+        'Scrapeé ' + results.length + ' ' + (label[industry] || 'negocios') + ' de Google Maps y necesito tu análisis.',
+        '',
+        'Por favor responde:',
+        questions.map(function(q, i) { return (i + 1) + '. ' + q; }).join('\n'),
+        '',
+        'Aquí están los datos:',
+        '',
+        rows.join('\n')
+    ].join('\n');
 }
 
 function escapeCsvCell(value) {
